@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>不動産1物件 長期収支・資産推移シミュレーター</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --accent-green: #059669;
+            --accent-red: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            text-align: center;
+            margin-bottom: 16px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .section-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 12px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid var(--primary);
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 10px;
+            background-color: #fff;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            outline: 2px solid rgba(37, 99, 235, 0.2);
+        }
+
+        input[type="number"] {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .unit {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
+        .calc-btn {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .calc-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .card {
+            background-color: #f1f5f9;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .card-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .card-value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-top: 2px;
+            color: var(--text-main);
+        }
+
+        .card.highlight {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            grid-column: span 2;
+        }
+
+        .card.highlight .card-value {
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 260px;
+            margin-top: 20px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            text-align: right;
+        }
+
+        th, td {
+            padding: 8px 6px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        td:first-child, th:first-child {
+            text-align: center;
+        }
+
+        .note-footer {
+            margin-top: 20px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 10px;
+        }
+
+        .collapsible-trigger {
+            font-size: 0.75rem;
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .advanced-settings {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .advanced-settings.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>不動産WEBシミュレーター</h1>
+
+    <!-- 1. 入力項目 -->
+    <div class="section-title">
+        <span>1. 物件情報・ローン設定</span>
+    </div>
+
+    <div class="input-group">
+        <div class="field">
+            <label for="mv">⑴ 不動産の時価</label>
+            <div class="input-wrapper">
+                <input type="number" id="mv" value="2000" step="100">
+                <span class="unit">万円</span>
+            </div>
+        </div>
+        <div class="field">
+            <label for="landRatio">⑵ 土地割合</label>
+            <div class="input-wrapper">
+                <input type="number" id="landRatio" value="60" min="0" max="100" step="5">
+                <span class="unit">%</span>
+            </div>
+        </div>
+        <div class="field">
+            <label for="loan">⑶ ローン残高</label>
+            <div class="input-wrapper">
+                <input type="number" id="loan" value="1600" step="100">
+                <span class="unit">万円</span>
+            </div>
+        </div>
+        <div class="field">
+            <label for="rate">⑷ ローン金利</label>
+            <div class="input-wrapper">
+                <input type="number" id="rate" value="1.5" step="0.1" min="0">
+                <span class="unit">%</span>
+            </div>
+        </div>
+        <div class="field">
+            <label for="term">⑸ ローン期間</label>
+            <div class="input-wrapper">
+                <input type="number" id="term" value="35" step="1" min="1" max="50">
+                <span class="unit">年</span>
+            </div>
+        </div>
+        <div class="field">
+            <label for="yieldRate">⑹ 実質利回り</label>
+            <div class="input-wrapper">
+                <input type="number" id="yieldRate" value="6.0" step="0.1">
+                <span class="unit">%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 詳細設定（展開式） -->
+    <div class="section-title">
+        <span>前提条件の追加設定</span>
+        <span class="collapsible-trigger" onclick="toggleAdvanced()">詳細表示/非表示</span>
+    </div>
+
+    <div class="advanced-settings" id="advancedSettings">
+        <div class="input-group">
+            <div class="field">
+                <label for="landGrowth">土地上昇率 (年)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="landGrowth" value="1.0" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="bldgLife">建物償却年数</label>
+                <div class="input-wrapper">
+                    <input type="number" id="bldgLife" value="30" step="1">
+                    <span class="unit">年</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">シミュレーション実行</button>
+
+    <!-- 2. サマリー表示 (30年後) -->
+    <div class="section-title">
+        <span>2. 試算サマリー（30年後）</span>
+    </div>
+
+    <div class="summary-cards">
+        <div class="card">
+            <div class="card-label">⑴ 時価（土地＋建物）</div>
+            <div class="card-value" id="sumMv">-</div>
+        </div>
+        <div class="card">
+            <div class="card-label">⑵ ローン元本残</div>
+            <div class="card-value" id="sumLoan">-</div>
+        </div>
+        <div class="card">
+            <div class="card-label">⑷ 余剰金累計</div>
+            <div class="card-value" id="sumSurplus">-</div>
+        </div>
+        <div class="card highlight">
+            <div class="card-label">⑶ 実質資産額（時価-ローン+余剰金）</div>
+            <div class="card-value" id="sumNetAsset">-</div>
+        </div>
+    </div>
+
+    <!-- 3. グラフ表示 -->
+    <div class="chart-container">
+        <canvas id="resultChart"></canvas>
+    </div>
+
+    <!-- 4. 5年ごとの詳細推移表 -->
+    <div class="section-title">
+        <span>3. 5年刻みの詳細推移表</span>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>経過</th>
+                    <th>⑴ 時価</th>
+                    <th>⑵ ローン残</th>
+                    <th>⑷ 余剰累計</th>
+                    <th>⑶ 実質資産</th>
+                </tr>
+            </thead>
+            <tbody id="resultTableBody">
+                <!-- JavaScriptで動的生成 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 注記・前提 -->
+    <div class="note-footer">
+        ※前提条件：<br>
+        ・土地は年上昇率（標準1%）で複利成長。<br>
+        ・建物は残存償却年数で直線的に下落（初期建物の最大80%下落＝20%を残存下限とします）。<br>
+        ・ローンは元利金均等返済方式で計算。<br>
+        ・余剰金は（年間実質賃料収入 − 年間ローン返済額）の積立総額。<br>
+        ・実質資産額 ＝ ⑴時価 − ⑵ローン元本残 ＋ ⑷余剰金累計。
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    function toggleAdvanced() {
+        const el = document.getElementById('advancedSettings');
+        el.classList.toggle('show');
+    }
+
+    function calculate() {
+        // 入力値取得
+        const mv = parseFloat(document.getElementById('mv').value) || 0;
+        const landRatio = (parseFloat(document.getElementById('landRatio').value) || 0) / 100;
+        const loan = parseFloat(document.getElementById('loan').value) || 0;
+        const rate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
+        const term = parseInt(document.getElementById('term').value) || 1;
+        const yieldRate = (parseFloat(document.getElementById('yieldRate').value) || 0) / 100;
+        
+        const landGrowth = (parseFloat(document.getElementById('landGrowth').value) || 0) / 100;
+        const bldgLife = parseInt(document.getElementById('bldgLife').value) || 30;
+
+        // 計算に必要な準備
+        const initialLand = mv * landRatio;
+        const initialBldg = mv * (1 - landRatio);
+
+        // 年間ローン返済額（元利金均等）
+        let pmt = 0;
+        if (loan > 0 && term > 0) {
+            if (rate > 0) {
+                pmt = loan * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
+            } else {
+                pmt = loan / term;
+            }
+        }
+
+        // 年間余剰金
+        const annualRent = mv * yieldRate;
+        const annualSurplus = annualRent - pmt;
+
+        const labels = [];
+        const dataMv = [];
+        const dataLoan = [];
+        const dataSurplus = [];
+        const dataNetAsset = [];
+
+        const tableBody = document.getElementById('resultTableBody');
+        tableBody.innerHTML = '';
+
+        const maxYears = 30;
+
+        for (let t = 0; t <= maxYears; t++) {
+            // 土地時価
+            const landVal = initialLand * Math.pow(1 + landGrowth, t);
+
+            // 建物時価 (償却年数で80%下落、下限20%)
+            const bldgDepreciationRate = Math.min(0.80, (t / bldgLife) * 0.80);
+            const bldgVal = initialBldg * (1 - bldgDepreciationRate);
+
+            // 時価合計
+            const currentMv = landVal + bldgVal;
+
+            // ローン残高
+            let currentLoan = 0;
+            if (t < term && loan > 0) {
+                if (rate > 0) {
+                    currentLoan = loan * (Math.pow(1 + rate, term) - Math.pow(1 + rate, t)) / (Math.pow(1 + rate, term) - 1);
+                } else {
+                    currentLoan = loan - (pmt * t);
+                }
+            } else {
+                currentLoan = 0;
+            }
+            if (currentLoan < 0) currentLoan = 0;
+
+            // 余剰金累計
+            const currentSurplus = annualSurplus * t;
+
+            // 実質資産額
+            const netAsset = currentMv - currentLoan + currentSurplus;
+
+            labels.push(t === 0 ? '現在' : t + '年後');
+            dataMv.push(Math.round(currentMv * 10) / 10);
+            dataLoan.push(Math.round(currentLoan * 10) / 10);
+            dataSurplus.push(Math.round(currentSurplus * 10) / 10);
+            dataNetAsset.push(Math.round(netAsset * 10) / 10);
+
+            // 5年ごとの表レンダリング
+            if (t % 5 === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${t === 0 ? '現在' : t + '年'}</td>
+                    <td>${currentMv.toFixed(1)}</td>
+                    <td>${currentLoan.toFixed(1)}</td>
+                    <td>${currentSurplus.toFixed(1)}</td>
+                    <td style="font-weight: bold; color: var(--primary);">${netAsset.toFixed(1)}</td>
+                `;
+                tableBody.appendChild(tr);
+            }
+        }
+
+        // サマリー (30年後) 表示更新
+        document.getElementById('sumMv').innerText = dataMv[30].toLocaleString() + ' 万円';
+        document.getElementById('sumLoan').innerText = dataLoan[30].toLocaleString() + ' 万円';
+        document.getElementById('sumSurplus').innerText = dataSurplus[30].toLocaleString() + ' 万円';
+        document.getElementById('sumNetAsset').innerText = dataNetAsset[30].toLocaleString() + ' 万円';
+
+        // グラフ更新
+        renderChart(labels, dataMv, dataLoan, dataSurplus, dataNetAsset);
+    }
+
+    function renderChart(labels, dataMv, dataLoan, dataSurplus, dataNetAsset) {
+        const ctx = document.getElementById('resultChart').getContext('2d');
+
+        if (myChart) {
+            myChart.destroy();
+        }
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '⑶ 実質資産額',
+                        data: dataNetAsset,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        borderWidth: 2.5,
+                        tension: 0.1
+                    },
+                    {
+                        label: '⑴ 時価(土地+建物)',
+                        data: dataMv,
+                        borderColor: '#059669',
+                        borderDash: [4, 4],
+                        borderWidth: 1.5,
+                        fill: false
+                    },
+                    {
+                        label: '⑵ ローン残高',
+                        data: dataLoan,
+                        borderColor: '#dc2626',
+                        borderWidth: 1.5,
+                        fill: false
+                    },
+                    {
+                        label: '⑷ 余剰金累計',
+                        data: dataSurplus,
+                        borderColor: '#d97706',
+                        borderWidth: 1.5,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' 万円';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { font: { size: 9 } }
+                    },
+                    y: {
+                        ticks: {
+                            font: { size: 9 },
+                            callback: function(value) { return value + '万'; }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 初回実行
+    window.onload = function() {
+        calculate();
+    };
+</script>
+
+</body>
+</html>
